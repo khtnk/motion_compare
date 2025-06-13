@@ -343,8 +343,8 @@ def get_max_amplitude_near_kilo(amplitude_df, target_kilo, kilo_range=0.005):
 def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, amplitude_df,
                                        target_kilo, kilo_range=0.005,
                                        plot_kilo_start=None, plot_kilo_end=None,
-                                       figsize=(12, 6), show_original=True):
-    """波形の連続プロットと全振幅抽出範囲の可視化"""
+                                       figsize=(12, 8), show_original=True):
+    """波形の連続プロットと全振幅抽出範囲の可視化（1つのグラフに統合）"""
     if plot_kilo_start is None or plot_kilo_end is None:
         plot_kilo_min = target_kilo - 0.02
         plot_kilo_max = target_kilo + 0.02
@@ -357,23 +357,26 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
     
     n_datasets = 1 + len(corrected_datasets)
     
-    fig, axes = plt.subplots(n_datasets, 1, figsize=figsize, sharex=True)
-    if n_datasets == 1:
-        axes = [axes]
+    # 単一のグラフを作成
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
     
-    colors = plt.cm.tab10(np.linspace(0, 1, n_datasets))
+    # 13個の異なる色を確保するため、tab20カラーマップを使用
+    if n_datasets <= 10:
+        colors = plt.cm.tab10(np.linspace(0, 1, 10))
+    else:
+        # 13個以上の場合はtab20を使用
+        colors = plt.cm.tab20(np.linspace(0, 1, 20))[:n_datasets]
     
-    # data0プロット
-    ax = axes[0]
+    # data0プロット（オフセット無し）
     plot_mask = (reference_data['Kilo'] >= plot_kilo_min) & (reference_data['Kilo'] <= plot_kilo_max)
     plot_data = reference_data[plot_mask]
     
+    # data0の測定日時を取得
+    data0_date = extract_date_from_filepath('data/up/NO1389_20240423122158/motion/df_acc.csv')
+    data0_label = data0_date if data0_date else 'data0'
+    
     if len(plot_data) > 0:
-        ax.plot(plot_data['Kilo'], plot_data['UD'], color=colors[0], linewidth=2.5, alpha=0.8)
-        ax.axvspan(amp_kilo_min, amp_kilo_max, alpha=0.2, color='red', 
-                  label=f'全振幅抽出範囲 (±{kilo_range:.3f}m)')
-        ax.axvline(target_kilo, color='red', linestyle='--', alpha=0.7, 
-                  label=f'ターゲットキロ {target_kilo:.3f}')
+        ax.plot(plot_data['Kilo'], plot_data['UD'], color=colors[0], linewidth=2.0, alpha=0.8, label=data0_label)
         
         # 該当データセットの振幅ポイントをマーク
         if len(amplitude_df) > 0:
@@ -384,49 +387,55 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
             ]
             
             for _, amp_row in dataset_amplitudes.iterrows():
-                ax.scatter(amp_row['kilo'], 0, color='red', s=60, marker='v', alpha=0.8, zorder=5)
+                ax.scatter(amp_row['kilo'], 0, color='red', s=40, marker='v', alpha=0.8, zorder=5)
                 ax.annotate(f'{amp_row["amplitude"]:.3f}', 
                            (amp_row['kilo'], 0),
                            textcoords="offset points", xytext=(0,15), ha='center',
-                           fontsize=8, color='red', weight='bold')
+                           fontsize=12, color='red', weight='bold')
     
-    # 計測日時を左上に表示
-    date_str = extract_date_from_filepath('data/up/NO1389_20240423122158/motion/df_acc.csv')
-    if date_str:
-        ax.text(0.02, 0.98, date_str, transform=ax.transAxes, fontsize=10, 
-                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
-    ax.set_ylabel('UD (data0)')
-    ax.set_ylim(-3, 3)
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=8)
-    
-    # data1-data12プロット
+    # 各データセットの測定日時情報
+    dataset_info = {
+        'data1': 'data/up/NO1988_20240705085641/motion/df_acc.csv',
+        'data2': 'data/up/NO2011_20240712095214/motion/df_acc.csv',
+        'data3': 'data/up/NO2029_20240719085547/motion/df_acc.csv',
+        'data4': 'data/up/NO2051_20240801095015/motion/df_acc.csv',
+        'data5': 'data/up/NO2118_20240829085511/motion/df_acc.csv',
+        'data6': 'data/up/NO2128_20240905085546/motion/df_acc.csv',
+        'data7': 'data/up/NO2154_20240919085623/motion/df_acc.csv',
+        'data8': 'data/up/NO2161_20241003085613/motion/df_acc.csv',
+        'data9': 'data/up/NO2186_20241017085549/motion/df_acc.csv',
+        'data10': 'data/up/NO2204_20241024085540/motion/df_acc.csv',
+        'data11': 'data/up/NO2327_20241114135826/motion/df_acc.csv',
+        'data12': 'data/up/NO2400_20241128141034/motion/df_acc.csv'
+    }
+
+    # data1-data12プロット（UDを-2ずつオフセット）
     for i, (dataset_name, data_dict) in enumerate(corrected_datasets.items()):
-        ax = axes[i + 1]
         corrected_data = data_dict['corrected']
+        offset = -2 * (i + 1)  # -2, -4, -6, ..., -24
+        
+        # 測定日時を取得してラベルに使用
+        dataset_date = extract_date_from_filepath(dataset_info.get(dataset_name, ''))
+        dataset_label = dataset_date if dataset_date else dataset_name
         
         plot_mask = (corrected_data['Kilo'] >= plot_kilo_min) & (corrected_data['Kilo'] <= plot_kilo_max)
         plot_data = corrected_data[plot_mask]
         
         if len(plot_data) > 0:
-            # 補正済み波形をプロット
-            ax.plot(plot_data['Kilo'], plot_data['UD'], color=colors[i + 1], 
-                   linewidth=2.5, alpha=0.8, label='補正済み')
+            # 補正済み波形をプロット（オフセット適用）
+            ax.plot(plot_data['Kilo'], plot_data['UD'] + offset, color=colors[i + 1], 
+                   linewidth=2.0, alpha=0.8, label=dataset_label)
             
-            # 元の波形も表示する場合
+            # 元の波形も表示する場合（凡例なし）
             if show_original:
                 original_data = data_dict['original']
                 original_plot_mask = (original_data['Kilo'] >= plot_kilo_min) & (original_data['Kilo'] <= plot_kilo_max)
                 original_plot_data = original_data[original_plot_mask]
                 
                 if len(original_plot_data) > 0:
-                    ax.plot(original_plot_data['Kilo'], original_plot_data['UD'], 
-                           color=colors[i + 1], linewidth=2.0, alpha=0.5, 
-                           linestyle='--', label='元データ')
-            
-            ax.axvspan(amp_kilo_min, amp_kilo_max, alpha=0.2, color='red')
-            ax.axvline(target_kilo, color='red', linestyle='--', alpha=0.7)
+                    ax.plot(original_plot_data['Kilo'], original_plot_data['UD'] + offset, 
+                           color=colors[i + 1], linewidth=1.5, alpha=0.5, 
+                           linestyle='--')
             
             # 該当データセットの振幅ポイントをマーク
             if len(amplitude_df) > 0:
@@ -437,46 +446,25 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
                 ]
                 
                 for _, amp_row in dataset_amplitudes.iterrows():
-                    ax.scatter(amp_row['kilo'], 0, color='red', s=60, marker='v', alpha=0.8, zorder=5)
+                    ax.scatter(amp_row['kilo'], offset, color='red', s=40, marker='v', alpha=0.8, zorder=5)
                     ax.annotate(f'{amp_row["amplitude"]:.3f}', 
-                               (amp_row['kilo'], 0),
+                               (amp_row['kilo'], offset),
                                textcoords="offset points", xytext=(0,15), ha='center',
-                               fontsize=8, color='red', weight='bold')
-        
-        # 計測日時を左上に表示
-        dataset_info = {
-            'data1': 'data/up/NO1988_20240705085641/motion/df_acc.csv',
-            'data2': 'data/up/NO2011_20240712095214/motion/df_acc.csv',
-            'data3': 'data/up/NO2029_20240719085547/motion/df_acc.csv',
-            'data4': 'data/up/NO2051_20240801095015/motion/df_acc.csv',
-            'data5': 'data/up/NO2118_20240829085511/motion/df_acc.csv',
-            'data6': 'data/up/NO2128_20240905085546/motion/df_acc.csv',
-            'data7': 'data/up/NO2154_20240919085623/motion/df_acc.csv',
-            'data8': 'data/up/NO2161_20241003085613/motion/df_acc.csv',
-            'data9': 'data/up/NO2186_20241017085549/motion/df_acc.csv',
-            'data10': 'data/up/NO2204_20241024085540/motion/df_acc.csv',
-            'data11': 'data/up/NO2327_20241114135826/motion/df_acc.csv',
-            'data12': 'data/up/NO2400_20241128141034/motion/df_acc.csv'
-        }
-        
-        if dataset_name in dataset_info:
-            date_str = extract_date_from_filepath(dataset_info[dataset_name])
-            if date_str:
-                ax.text(0.02, 0.98, date_str, transform=ax.transAxes, fontsize=10, 
-                        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
-        ax.set_ylabel(f'UD ({dataset_name})')
-        ax.set_ylim(-3, 3)
-        ax.grid(True, alpha=0.3)
-        if show_original and len(plot_data) > 0:
-            ax.legend(fontsize=8, loc='upper right')
+                               fontsize=12, color='red', weight='bold')
     
-    axes[-1].set_xlabel('Kilo')
+    # 全振幅抽出範囲とターゲットキロの表示
+    ax.axvspan(amp_kilo_min, amp_kilo_max, alpha=0.15, color='red', 
+              label=f'全振幅抽出範囲 (±{kilo_range:.3f}m)')
+    ax.axvline(target_kilo, color='red', linestyle='--', alpha=0.7, 
+              label=f'ターゲットキロ {target_kilo:.3f}')
     
-    # タイトルは削除
+    ax.set_xlabel('Kilo')
+    ax.set_ylabel('UD (オフセット適用)')
+    ax.set_title('時刻歴波形の統合表示')
+    ax.grid(True, alpha=0.3)
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
     
     plt.tight_layout()
-    plt.subplots_adjust(top=0.96)
     plt.show()
 
 
