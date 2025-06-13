@@ -279,30 +279,18 @@ def extract_date_from_filepath(filepath):
     return None
 
 
-def get_max_amplitude_near_kilo(amplitude_df, target_kilo, kilo_range=0.005):
-    """指定キロ周辺の全振幅最大値をデータセットごとに取得"""
-    dataset_info = {
-        'data0': {'path': 'data/up/NO1389_20240423122158/motion/df_acc.csv', 'name': 'data0'},
-        'data1': {'path': 'data/up/NO1988_20240705085641/motion/df_acc.csv', 'name': 'data1'},
-        'data2': {'path': 'data/up/NO2011_20240712095214/motion/df_acc.csv', 'name': 'data2'},
-        'data3': {'path': 'data/up/NO2029_20240719085547/motion/df_acc.csv', 'name': 'data3'},
-        'data4': {'path': 'data/up/NO2051_20240801095015/motion/df_acc.csv', 'name': 'data4'},
-        'data5': {'path': 'data/up/NO2118_20240829085511/motion/df_acc.csv', 'name': 'data5'},
-        'data6': {'path': 'data/up/NO2128_20240905085546/motion/df_acc.csv', 'name': 'data6'},
-        'data7': {'path': 'data/up/NO2154_20240919085623/motion/df_acc.csv', 'name': 'data7'},
-        'data8': {'path': 'data/up/NO2161_20241003085613/motion/df_acc.csv', 'name': 'data8'},
-        'data9': {'path': 'data/up/NO2186_20241017085549/motion/df_acc.csv', 'name': 'data9'},
-        'data10': {'path': 'data/up/NO2204_20241024085540/motion/df_acc.csv', 'name': 'data10'},
-        'data11': {'path': 'data/up/NO2327_20241114135826/motion/df_acc.csv', 'name': 'data11'},
-        'data12': {'path': 'data/up/NO2400_20241128141034/motion/df_acc.csv', 'name': 'data12'}
-    }
+def get_max_amplitude_near_kilo(amplitude_df, reference_path, dataset_info, target_kilo, kilo_range=0.005):
+    
+    dataset_info_add0 = dataset_info.copy()
+    # data0のパスを追加
+    dataset_info_add0['data0'] = reference_path
     
     kilo_min = target_kilo - kilo_range
     kilo_max = target_kilo + kilo_range
     
     results = []
     
-    for dataset_name, info in dataset_info.items():
+    for dataset_name, path in dataset_info_add0.items():
         # 該当データセットの振幅データを抽出
         dataset_data = amplitude_df[amplitude_df['dataset'] == dataset_name]
         
@@ -316,7 +304,7 @@ def get_max_amplitude_near_kilo(amplitude_df, target_kilo, kilo_range=0.005):
         ]
         
         # 日付を抽出
-        date_str = extract_date_from_filepath(info['path'])
+        date_str = extract_date_from_filepath(path)
         
         if len(range_data) > 0:
             max_amplitude = range_data['amplitude'].max()
@@ -340,7 +328,7 @@ def get_max_amplitude_near_kilo(amplitude_df, target_kilo, kilo_range=0.005):
     return pd.DataFrame(results)
 
 
-def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, amplitude_df,
+def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, amplitude_df, dataset_info,
                                        target_kilo, kilo_range=0.005,
                                        plot_kilo_start=None, plot_kilo_end=None,
                                        figsize=(12, 8), show_original=True):
@@ -392,22 +380,6 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
                            (amp_row['kilo'], 0),
                            textcoords="offset points", xytext=(0,15), ha='center',
                            fontsize=12, color='red', weight='bold')
-    
-    # 各データセットの測定日時情報
-    dataset_info = {
-        'data1': 'data/up/NO1988_20240705085641/motion/df_acc.csv',
-        'data2': 'data/up/NO2011_20240712095214/motion/df_acc.csv',
-        'data3': 'data/up/NO2029_20240719085547/motion/df_acc.csv',
-        'data4': 'data/up/NO2051_20240801095015/motion/df_acc.csv',
-        'data5': 'data/up/NO2118_20240829085511/motion/df_acc.csv',
-        'data6': 'data/up/NO2128_20240905085546/motion/df_acc.csv',
-        'data7': 'data/up/NO2154_20240919085623/motion/df_acc.csv',
-        'data8': 'data/up/NO2161_20241003085613/motion/df_acc.csv',
-        'data9': 'data/up/NO2186_20241017085549/motion/df_acc.csv',
-        'data10': 'data/up/NO2204_20241024085540/motion/df_acc.csv',
-        'data11': 'data/up/NO2327_20241114135826/motion/df_acc.csv',
-        'data12': 'data/up/NO2400_20241128141034/motion/df_acc.csv'
-    }
 
     # data1-data12プロット（UDを-2ずつオフセット）
     for i, (dataset_name, data_dict) in enumerate(corrected_datasets.items()):
@@ -458,20 +430,21 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
     ax.axvline(target_kilo, color='red', linestyle='--', alpha=0.7, 
               label=f'ターゲットキロ {target_kilo:.3f}')
     
-    ax.set_xlabel('Kilo')
-    ax.set_ylabel('UD (オフセット適用)')
-    ax.set_title('時刻歴波形の統合表示')
+    ax.set_xlabel('Kilo', fontsize=18)
+    ax.set_ylabel('UD (オフセット適用)', fontsize=18)
     ax.grid(True, alpha=0.3)
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=16)
     
     plt.tight_layout()
     plt.show()
 
 
-def plot_max_amplitude_timeseries_with_waveforms(target_kilo, kilo_range=0.005, 
-                                               plot_kilo_start=None, plot_kilo_end=None,
-                                               analysis_kilo_start=None, analysis_kilo_end=None,
-                                               figsize=(8, 16), show_original=True):
+def plot_max_amplitude_timeseries_with_waveforms(target_kilo, reference_path,
+                                                 dataset_info, kilo_range=0.005,
+                                                 plot_kilo_start=None, plot_kilo_end=None,
+                                                 analysis_kilo_start=None, analysis_kilo_end=None,
+                                                 figsize=(8, 16), show_original=True):
     """
     メイン機能：指定キロ周辺の最大振幅を時系列でプロット（波形表示付き）
     
@@ -490,28 +463,11 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, kilo_range=0.005,
     
     # データ読み込みと補正処理
     print("\\nデータ読み込み・補正処理中...")
-    reference_path = 'data/up/NO1389_20240423122158/motion/df_acc.csv'
     data0_up_res = load_and_resample_data(reference_path)
-    
-    dataset_paths = [
-        'data/up/NO1988_20240705085641/motion/df_acc.csv',  # data1
-        'data/up/NO2011_20240712095214/motion/df_acc.csv',  # data2
-        'data/up/NO2029_20240719085547/motion/df_acc.csv',  # data3
-        'data/up/NO2051_20240801095015/motion/df_acc.csv',  # data4
-        'data/up/NO2118_20240829085511/motion/df_acc.csv',  # data5
-        'data/up/NO2128_20240905085546/motion/df_acc.csv',  # data6
-        'data/up/NO2154_20240919085623/motion/df_acc.csv',  # data7
-        'data/up/NO2161_20241003085613/motion/df_acc.csv',  # data8
-        'data/up/NO2186_20241017085549/motion/df_acc.csv',  # data9
-        'data/up/NO2204_20241024085540/motion/df_acc.csv',  # data10
-        'data/up/NO2327_20241114135826/motion/df_acc.csv',  # data11
-        'data/up/NO2400_20241128141034/motion/df_acc.csv',  # data12
-    ]
     
     # 補正処理
     corrected_datasets = {}
-    for i, path in enumerate(dataset_paths):
-        dataset_name = f'data{i+1}'
+    for dataset_name, path in dataset_info.items():
         print(f"  {dataset_name}を処理中...")
         
         data = load_and_resample_data(path)
@@ -574,7 +530,7 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, kilo_range=0.005,
     print(f"振幅データ {len(amplitude_df)} 件を作成しました。")
     
     # 時系列分析
-    max_amp_df = get_max_amplitude_near_kilo(amplitude_df, target_kilo, kilo_range)
+    max_amp_df = get_max_amplitude_near_kilo(amplitude_df, reference_path, dataset_info, target_kilo, kilo_range)
     max_amp_df = max_amp_df.dropna(subset=['date']).copy()
     max_amp_df['date_obj'] = pd.to_datetime(max_amp_df['date'])
     max_amp_df = max_amp_df.sort_values('date_obj')
@@ -622,7 +578,7 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, kilo_range=0.005,
     
     # 波形プロット
     print("\\n波形連続プロットを生成中...")
-    plot_waveforms_with_amplitude_range(data0_up_res, corrected_datasets, amplitude_df,
+    plot_waveforms_with_amplitude_range(data0_up_res, corrected_datasets, amplitude_df, dataset_info,
                                       target_kilo, kilo_range, 
                                       plot_kilo_start, plot_kilo_end, figsize=figsize, 
                                       show_original=show_original)
