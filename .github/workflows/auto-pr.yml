@@ -1,0 +1,33 @@
+name: Auto PR for Issues
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create branch and PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=${{ github.event.issue.number }}
+          BRANCH_NAME="fix-issue-${ISSUE_NUMBER}"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git checkout -b $BRANCH_NAME
+          
+          # Make some changes (example)
+          echo "# Fix for issue #${ISSUE_NUMBER}" >> CHANGES.md
+          echo "This PR addresses issue #${ISSUE_NUMBER}" >> CHANGES.md
+          
+          git add CHANGES.md
+          git commit -m "Fix issue #${ISSUE_NUMBER}"
+          git push origin $BRANCH_NAME
+          
+          gh pr create --title "Fix issue #${ISSUE_NUMBER}" --body "Closes #${ISSUE_NUMBER}" --head $BRANCH_NAME --base main
