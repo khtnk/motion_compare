@@ -369,7 +369,7 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
     plot_data = reference_data[plot_mask]
     
     if len(plot_data) > 0:
-        ax.plot(plot_data['Kilo'], plot_data['UD'], color=colors[0], linewidth=1.5, alpha=0.8)
+        ax.plot(plot_data['Kilo'], plot_data['UD'], color=colors[0], linewidth=2.5, alpha=0.8)
         ax.axvspan(amp_kilo_min, amp_kilo_max, alpha=0.2, color='red', 
                   label=f'全振幅抽出範囲 (±{kilo_range:.3f}m)')
         ax.axvline(target_kilo, color='red', linestyle='--', alpha=0.7, 
@@ -390,8 +390,14 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
                            textcoords="offset points", xytext=(0,15), ha='center',
                            fontsize=8, color='red', weight='bold')
     
+    # 計測日時を左上に表示
+    date_str = extract_date_from_filepath('data/up/NO1389_20240423122158/motion/df_acc.csv')
+    if date_str:
+        ax.text(0.02, 0.98, date_str, transform=ax.transAxes, fontsize=10, 
+                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    
     ax.set_ylabel('UD (data0)')
-    ax.set_title('data0 (基準データ)', fontsize=12, weight='bold')
+    ax.set_ylim(-3, 3)
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8)
     
@@ -406,7 +412,7 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
         if len(plot_data) > 0:
             # 補正済み波形をプロット
             ax.plot(plot_data['Kilo'], plot_data['UD'], color=colors[i + 1], 
-                   linewidth=1.5, alpha=0.8, label='補正済み')
+                   linewidth=2.5, alpha=0.8, label='補正済み')
             
             # 元の波形も表示する場合
             if show_original:
@@ -416,7 +422,7 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
                 
                 if len(original_plot_data) > 0:
                     ax.plot(original_plot_data['Kilo'], original_plot_data['UD'], 
-                           color=colors[i + 1], linewidth=1.0, alpha=0.5, 
+                           color=colors[i + 1], linewidth=2.0, alpha=0.5, 
                            linestyle='--', label='元データ')
             
             ax.axvspan(amp_kilo_min, amp_kilo_max, alpha=0.2, color='red')
@@ -437,20 +443,37 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
                                textcoords="offset points", xytext=(0,15), ha='center',
                                fontsize=8, color='red', weight='bold')
         
+        # 計測日時を左上に表示
+        dataset_info = {
+            'data1': 'data/up/NO1988_20240705085641/motion/df_acc.csv',
+            'data2': 'data/up/NO2011_20240712095214/motion/df_acc.csv',
+            'data3': 'data/up/NO2029_20240719085547/motion/df_acc.csv',
+            'data4': 'data/up/NO2051_20240801095015/motion/df_acc.csv',
+            'data5': 'data/up/NO2118_20240829085511/motion/df_acc.csv',
+            'data6': 'data/up/NO2128_20240905085546/motion/df_acc.csv',
+            'data7': 'data/up/NO2154_20240919085623/motion/df_acc.csv',
+            'data8': 'data/up/NO2161_20241003085613/motion/df_acc.csv',
+            'data9': 'data/up/NO2186_20241017085549/motion/df_acc.csv',
+            'data10': 'data/up/NO2204_20241024085540/motion/df_acc.csv',
+            'data11': 'data/up/NO2327_20241114135826/motion/df_acc.csv',
+            'data12': 'data/up/NO2400_20241128141034/motion/df_acc.csv'
+        }
+        
+        if dataset_name in dataset_info:
+            date_str = extract_date_from_filepath(dataset_info[dataset_name])
+            if date_str:
+                ax.text(0.02, 0.98, date_str, transform=ax.transAxes, fontsize=10, 
+                        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
         ax.set_ylabel(f'UD ({dataset_name})')
-        title = f'{dataset_name} (補正済み)'
-        if show_original:
-            title += ' + 元データ'
-        ax.set_title(title, fontsize=12, weight='bold')
+        ax.set_ylim(-3, 3)
         ax.grid(True, alpha=0.3)
         if show_original and len(plot_data) > 0:
             ax.legend(fontsize=8, loc='upper right')
     
     axes[-1].set_xlabel('Kilo')
     
-    fig.suptitle(f'波形連続プロット：キロ {target_kilo:.3f}±{kilo_range:.3f}m 全振幅抽出範囲\\n' +
-                 f'表示範囲: {plot_kilo_min:.3f} - {plot_kilo_max:.3f}', 
-                 fontsize=16, weight='bold', y=0.995)
+    # タイトルは削除
     
     plt.tight_layout()
     plt.subplots_adjust(top=0.96)
