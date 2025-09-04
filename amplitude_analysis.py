@@ -5,6 +5,7 @@ Motion Data Amplitude Analysis Tool - 修正版
 指定キロ周辺の全振幅を時系列でプロット（波形表示付き）
 """
 
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ import japanize_matplotlib
 
 def load_and_resample_data(file_path, kilo_interval=0.001):
     """CSVファイル読み込みとKiloベースリサンプリング"""
-    df = pd.read_csv(file_path)
+    df = pd.read_csv(os.path.join(file_path,'df_acc.csv'))
     
     # Kiloでソート（補間に必要）
     df = df.sort_values('Kilo').reset_index(drop=True)
@@ -328,7 +329,7 @@ def get_max_amplitude_near_kilo(amplitude_df, reference_path, dataset_info, targ
     return pd.DataFrame(results)
 
 
-def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, amplitude_df, dataset_info,
+def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, amplitude_df, dataset_info, reference_path,
                                        target_kilo, kilo_range=0.005,
                                        plot_kilo_start=None, plot_kilo_end=None,
                                        figsize=(12, 8), show_original=True):
@@ -360,7 +361,7 @@ def plot_waveforms_with_amplitude_range(reference_data, corrected_datasets, ampl
     plot_data = reference_data[plot_mask]
     
     # data0の測定日時を取得
-    data0_date = extract_date_from_filepath('data/up/NO1389_20240423122158/motion/df_acc.csv')
+    data0_date = extract_date_from_filepath(reference_path)
     data0_label = data0_date if data0_date else 'data0'
     
     if len(plot_data) > 0:
@@ -444,7 +445,8 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, reference_path,
                                                  dataset_info, kilo_range=0.005,
                                                  plot_kilo_start=None, plot_kilo_end=None,
                                                  analysis_kilo_start=None, analysis_kilo_end=None,
-                                                 figsize=(8, 16), show_original=True):
+                                                 figsize=(8, 16), show_original=True,
+                                                 enable_correction=True):
     """
     メイン機能：指定キロ周辺の最大振幅を時系列でプロット（波形表示付き）
     
@@ -455,11 +457,13 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, reference_path,
     - analysis_kilo_start/end: 分析用データの範囲
     - figsize: 図のサイズ
     - show_original: 元の波形も表示するかどうか（デフォルト: True）
+    - enable_correction: 波形位置補正を実行するかどうか（デフォルト: True）
     """
     
     print("=== 全振幅時系列分析（波形表示付き） ===")
     print(f"ターゲットキロ: {target_kilo}")
     print(f"全振幅抽出範囲: ±{kilo_range}m")
+    print(f"波形位置補正: {'有効' if enable_correction else '無効'}")
     
     # データ読み込みと補正処理
     print("\\nデータ読み込み・補正処理中...")
@@ -472,13 +476,17 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, reference_path,
         
         data = load_and_resample_data(path)
         original_data = data.copy()  # 補正前のデータを先に保存
-        corrected_data = correct_kilo_by_correlation(
-            data0_up_res, data, analysis_kilo_start, analysis_kilo_end
-        )
+        
+        if enable_correction:
+            corrected_data = correct_kilo_by_correlation(
+                data0_up_res, data, analysis_kilo_start, analysis_kilo_end
+            )
+        else:
+            corrected_data = data.copy()  # 補正しない場合は元データをそのまま使用
         
         corrected_datasets[dataset_name] = {
             'original': original_data,  # 元のデータを保持
-            'corrected': corrected_data  # 補正後のデータ
+            'corrected': corrected_data  # 補正後のデータ（補正なしの場合は元データと同じ）
         }
     
     # 全振幅分析
@@ -578,7 +586,7 @@ def plot_max_amplitude_timeseries_with_waveforms(target_kilo, reference_path,
     
     # 波形プロット
     print("\\n波形連続プロットを生成中...")
-    plot_waveforms_with_amplitude_range(data0_up_res, corrected_datasets, amplitude_df, dataset_info,
+    plot_waveforms_with_amplitude_range(data0_up_res, corrected_datasets, amplitude_df, dataset_info, reference_path,
                                       target_kilo, kilo_range, 
                                       plot_kilo_start, plot_kilo_end, figsize=figsize, 
                                       show_original=show_original)
